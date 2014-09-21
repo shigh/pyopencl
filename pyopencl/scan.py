@@ -870,7 +870,8 @@ class _GenericScanKernelBase(object):
             arguments, input_expr, scan_expr, neutral, output_statement,
             is_segment_start_expr=None, input_fetch_exprs=[],
             index_dtype=np.int32,
-            name_prefix="scan", options=[], preamble="", devices=None):
+            name_prefix="scan", options=[], preamble="", devices=None,
+            unpack=None):
         """
         :arg ctx: a :class:`pyopencl.Context` within which the code
             for this scan kernel will be generated.
@@ -955,6 +956,7 @@ class _GenericScanKernelBase(object):
 
         self.context = ctx
         dtype = self.dtype = np.dtype(dtype)
+        self.unpack = unpack
 
         if neutral is None:
             from warnings import warn
@@ -975,8 +977,12 @@ class _GenericScanKernelBase(object):
         self.devices = devices
         self.options = options
 
-        from pyopencl.tools import parse_arg_list
-        self.parsed_args = parse_arg_list(arguments)
+        from pyopencl.tools import parse_arg_list, parse_struct_arg_list
+        if unpack:
+            self.parsed_args = parse_struct_arg_list(arguments)
+        else:
+            self.parsed_args = parse_arg_list(arguments)
+
         from pyopencl.tools import VectorArg
         self.first_array_idx = [
                 i for i, arg in enumerate(self.parsed_args)
@@ -998,9 +1004,11 @@ class _GenericScanKernelBase(object):
 
         arg_dtypes = {}
         arg_ctypes = {}
+        arg_bstart = {}
         for arg in self.parsed_args:
             arg_dtypes[arg.name] = arg.dtype
             arg_ctypes[arg.name] = dtype_to_ctype(arg.dtype)
+            if unpack: arg_bstart[arg.name] = arg.byte_start
 
         self.options = options
         self.name_prefix = name_prefix
@@ -1025,6 +1033,8 @@ class _GenericScanKernelBase(object):
             is_gpu=bool(self.devices[0].type & cl.device_type.GPU),
             double_support=all(
                 has_double_support(dev) for dev in devices),
+            #unpack=unpack,
+            #arg_bstart=arg_bstart,
             )
 
         # }}}

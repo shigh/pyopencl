@@ -331,6 +331,19 @@ class VectorArg(DtypedArgument):
         return result
 
 
+class StructVectorArg(VectorArg):
+    def __init__(self, dtype, name, byte_start, with_offset=False):
+        VectorArg.__init__(self, dtype, name, with_offset)
+        self.byte_start = byte_start
+
+    def __repr__(self):
+        return "%s(%r, %s, %s)" % (
+                self.__class__.__name__,
+                self.name,
+                self.dtype,
+                self.byte_start)
+
+
 class ScalarArg(DtypedArgument):
     def declarator(self):
         return "%s %s" % (dtype_to_ctype(self.dtype), self.name)
@@ -381,6 +394,22 @@ def parse_arg_list(arguments, with_offset=False):
 
     return [parse_single_arg(arg) for arg in arguments]
 
+
+def parse_struct_arg_list(arguments, with_offset=False):
+    """Parse a numpy compund data type
+
+    I do not believe this needs to call the parse_*_arg functions,
+    since we are building args instead of parsing them
+    """
+    fields = []
+    for k, v in arguments.iteritems():
+        fields.append((k, v[0], v[1]))
+    # The dict storing field names does not guarantee order
+    fields = sorted(fields, key=lambda x:x[2])
+
+    return [StructVectorArg(dtype, name, byte_start, with_offset)
+            for name, dtype, byte_start in fields]
+    
 
 def get_arg_list_scalar_arg_dtypes(arg_types):
     result = []
