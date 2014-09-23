@@ -1033,8 +1033,8 @@ class _GenericScanKernelBase(object):
             is_gpu=bool(self.devices[0].type & cl.device_type.GPU),
             double_support=all(
                 has_double_support(dev) for dev in devices),
-            #unpack=unpack,
-            #arg_bstart=arg_bstart,
+            unpack=unpack,
+            arg_bstart=arg_bstart,
             )
 
         # }}}
