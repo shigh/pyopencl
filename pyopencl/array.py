@@ -38,7 +38,6 @@ from pyopencl.compyte.array import (
         c_contiguous_strides as _c_contiguous_strides,
         ArrayFlags as _ArrayFlags,
         get_common_dtype as _get_common_dtype_base)
-from pyopencl.compyte.dtypes import DTypeDict as _DTypeDict
 from pyopencl.characterize import has_double_support
 
 
@@ -58,6 +57,7 @@ except:
     def _dtype_is_object(t):
         return False
 
+
 # {{{ vector types
 
 class vec:
@@ -70,7 +70,7 @@ def _create_vector_types():
     from pyopencl.tools import get_or_register_dtype
 
     vec.types = {}
-    vec.type_to_scalar_and_count = _DTypeDict()
+    vec.type_to_scalar_and_count = {}
 
     counts = [2, 3, 4, 8, 16]
 
@@ -2017,6 +2017,34 @@ def diff(array, queue=None, allocator=None):
 
     result = empty(queue, (n-1,), array.dtype, allocator=allocator)
     _diff(result, array, queue=queue)
+    return result
+
+
+def hstack(arrays, queue=None):
+    from pyopencl.array import empty
+
+    if len(arrays) == 0:
+        return empty(queue, (), dtype=np.float64)
+
+    if queue is None:
+        for ary in arrays:
+            if ary.queue is not None:
+                queue = ary.queue
+                break
+
+    from pytools import all_equal, single_valued
+    if not all_equal(len(ary.shape) for ary in arrays):
+        raise ValueError("arguments must all have the same number of axes")
+
+    lead_shape = single_valued(ary.shape[:-1] for ary in arrays)
+
+    w = _builtin_sum([ary.shape[-1] for ary in arrays])
+    result = empty(queue, lead_shape+(w,), arrays[0].dtype)
+    index = 0
+    for ary in arrays:
+        result[..., index:index+ary.shape[-1]] = ary
+        index += ary.shape[-1]
+
     return result
 
 # }}}
